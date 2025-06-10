@@ -46,7 +46,7 @@ async def kakao_webhook(req: KakaoRequest):
         answer = f"📄 자료 발췌:\n…{snippet}…"
     else:
 
-        resp = openai.ChatCompletion.create(
+        resp = openai.chat.completions.create(
             model="gpt-o4-mini",
             messages=[{"role": "user", "content": user_msg}]
         )

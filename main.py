@@ -18,17 +18,17 @@ openai.api_key = OPENAI_API_KEY
 
 def search_in_pdfs(query: str) -> str | None:
     ql = query.lower()
-    
+
     for path in glob.glob("data/*.pdf"):
         with pdfplumber.open(path) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text() or ""
-                lower = text.lower()
-                if ql in lower:
-                    i = lower.index(ql)
-                    start = max(i - 100, 0)
-                    end = min(i + len(ql) + 100, len(text))
-                    return text[start:end].replace("\n", " ")
+            # 첫 페이지만 읽어서 속도 개선
+            text = pdf.pages[0].extract_text() or ""
+            lower = text.lower()
+            if ql in lower:
+                i = lower.index(ql)
+                start = max(i - 100, 0)
+                end = min(i + len(ql) + 100, len(text))
+                return text[start:end].replace("\n", " ")
     return None
 
 app = FastAPI()

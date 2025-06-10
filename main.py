@@ -16,20 +16,18 @@ if not OPENAI_API_KEY:
 
 openai.api_key = OPENAI_API_KEY
 
-documents = []
-for path in glob.glob("data/*.pdf"):
-    with pdfplumber.open(path) as pdf:
-        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
-    documents.append(text)
-
 def search_in_pdfs(query: str) -> str | None:
     ql = query.lower()
-    for text in documents:
-        if ql in text.lower():
-            i = text.lower().index(ql)
-            start = max(i - 100, 0)
-            end = min(len(text), i + len(ql) + 100)
-            return text[start:end].replace("\n", " ")
+        for path in glob.glob("data/*.pdf"):
+        with pdfplumber.open(path) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text() or ""
+                lower = text.lower()
+                if ql in lower:
+                    i = lower.index(ql)
+                    start = max(i - 100, 0)
+                    end   = min(i + len(ql) + 100, len(text))
+                    return text[start:end].replace("\n", " ")
     return None
 
 app = FastAPI()

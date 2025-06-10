@@ -1,12 +1,15 @@
 import os
 import glob
+from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from pydantic import BaseModel
 import pdfplumber
 import openai
 
-load_dotenv()
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
     raise RuntimeError("OPENAI_API_KEY가 설정되지 않았습니다.")

@@ -40,36 +40,35 @@ function Search-InPdfs($query) {
 }
 
 # 4) FastAPI 앱 정의
-$app = [FastAPI]::new()
-Add-Type -Path 'path\to\pydantic.dll'   # 실제 실행 환경에선 필요 없습니다; 예시용
+app = FastAPI()
 
-class KakaoRequest([BaseModel]) {
-    [hashtable]$userRequest
-}
+class KakaoRequest(BaseModel):
+    userRequest: dict
 
-$app.post('/kakao') {
-    param($req)
+@app.post("/kakao")
+async def kakao_webhook(req: KakaoRequest):
+    user_msg = req.userRequest["utterance"]
 
-    $user_msg = $req.userRequest.utterance
-    $snippet = Search-InPdfs $user_msg
-
-    if ($snippet) {
-        $answer = "📄 자료 발췌:`n…$snippet…"
-    } else {
-        $resp = $client.chat.completions.create(
-            model='gpt-4o-mini',
-            messages=@(@{ role = 'user'; content = $user_msg })
+    # PDF 검색 우선
+    snippet = search_in_pdfs(user_msg)
+    if snippet:
+        answer = f"📄 자료 발췌:\n…{snippet}…"
+    else:
+        # PDF 검색 결과 없으면 OpenAI 호출
+        resp = client.chat.completions.create(
+            model="o4-mini",               # ← 여기만 o4-mini로 변경
+            messages=[{"role": "user", "content": user_msg}]
         )
-        $answer = $resp.choices[0].message.content
-    }
+        answer = resp.choices[0].message.content
 
-    return @{
-        version  = '2.0'
-        template = @{
-            outputs = @(@{ simpleText = @{ text = $answer } })
+    return {
+        "version": "2.0",
+        "template": {
+            "outputs": [
+                {"simpleText": {"text": answer}}
+            ]
         }
     }
-}
 
 # 위 코드는 예시입니다. 실제 main.py는 Python 스크립트이므로 VSCode 같은 에디터로 붙여넣으세요.
 "@ | Out-File -Encoding UTF8 main.py

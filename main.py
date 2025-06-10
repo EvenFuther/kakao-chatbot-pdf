@@ -1,45 +1,34 @@
-@"
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import os, glob, pdfplumber
-from openai import OpenAI
+import os, glob
+import pdfplumber
+import openai
 
-# 1) 환경변수 로드
 load_dotenv()
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
-    raise RuntimeError('OPENAI_API_KEY가 설정되지 않았습니다.')
+    raise RuntimeError("OPENAI_API_KEY가 설정되지 않았습니다.")
 
-# 2) OpenAI 클라이언트 초기화
-client = OpenAI(api_key=OPENAI_API_KEY)
+openai.api_key = OPENAI_API_KEY
 
-# 3) PDF 전부 읽어서 메모리 로드
 documents = []
-foreach ($path in Get-ChildItem -Path 'data' -Filter '*.pdf') {
-    $text = ''
-    $pdf = [pdfplumber.PDF]::open($path.FullName)
-    foreach ($page in $pdf.pages) {
-        $text += ($page.extract_text() + "`n")
-    }
-    $pdf.close()
-    $documents += $text
-}
+for path in glob.glob("data/*.pdf"):
+    with pdfplumber.open(path) as pdf:
+        text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+    documents.append(text)
 
-function Search-InPdfs($query) {
-    $ql = $query.ToLower()
-    foreach ($txt in $documents) {
-        if ($txt.ToLower().Contains($ql)) {
-            $i = $txt.ToLower().IndexOf($ql)
-            $start = [Math]::Max($i - 100, 0)
-            $end   = [Math]::Min($i + $ql.Length + 100, $txt.Length)
-            return $txt.Substring($start, $end - $start).Replace('`n',' ')
-        }
-    }
-    return $null
-}
+def search_in_pdfs(query: str) -> str | None:
+    ql = query.lower()
+    for text in documents:
+        if ql in text.lower():
+            i = text.lower().index(ql)
+            start = max(i - 100, 0)
+            end = min(len(text), i + len(ql) + 100)
+            return text[start:end].replace("\n", " ")
+    return None
 
-# 4) FastAPI 앱 정의
 app = FastAPI()
 
 class KakaoRequest(BaseModel):
@@ -49,14 +38,14 @@ class KakaoRequest(BaseModel):
 async def kakao_webhook(req: KakaoRequest):
     user_msg = req.userRequest["utterance"]
 
-    # PDF 검색 우선
+
     snippet = search_in_pdfs(user_msg)
     if snippet:
         answer = f"📄 자료 발췌:\n…{snippet}…"
     else:
-        # PDF 검색 결과 없으면 OpenAI 호출
-        resp = client.chat.completions.create(
-            model="o4-mini",               # ← 여기만 o4-mini로 변경
+
+        resp = openai.ChatCompletion.create(
+            model="o4-mini",
             messages=[{"role": "user", "content": user_msg}]
         )
         answer = resp.choices[0].message.content
@@ -70,5 +59,3 @@ async def kakao_webhook(req: KakaoRequest):
         }
     }
 
-# 위 코드는 예시입니다. 실제 main.py는 Python 스크립트이므로 VSCode 같은 에디터로 붙여넣으세요.
-"@ | Out-File -Encoding UTF8 main.py

@@ -1,8 +1,8 @@
+import os
+import glob
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from pydantic import BaseModel
-from dotenv import load_dotenv
-import os, glob
 import pdfplumber
 import openai
 
